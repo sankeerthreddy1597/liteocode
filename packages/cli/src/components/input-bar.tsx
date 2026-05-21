@@ -8,10 +8,10 @@ type Props = {
 };
 
 export const TEXTAREA_KEY_BINDINGS: KeyBinding[] = [
-  // { name: "return", action: "submit" },
-  // { name: "enter", shift: true, action: "newline" },
-  // { name: "enter", action: "submit" },
-  // { name: "return", shift: true, action: "newline" },
+  { name: "return", action: "submit" },
+  { name: "enter", shift: true, action: "newline" },
+  { name: "enter", action: "submit" },
+  { name: "return", shift: true, action: "newline" },
 ];
 
 export function InputBar({ onSubmit, disabled }: Props) {
