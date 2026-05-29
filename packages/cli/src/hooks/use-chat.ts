@@ -7,7 +7,7 @@ import { getErrorMessage } from "../lib/http-errors";
 import type { Mode } from "@litecode/database/enums";
 import {
   chatStreamEventSchema,
-  type SupportedChatModelId,
+  type AnyChatModelId,
 } from "@litecode/shared";
 
 export type ClientMessagePart = { type: "text"; text: string };
@@ -18,14 +18,14 @@ export type Message =
       role: "user";
       content: string;
       mode: Mode;
-      model: SupportedChatModelId;
+      model: AnyChatModelId;
     }
   | {
       id: string;
       role: "assistant";
       content: string;
       mode: Mode;
-      model: SupportedChatModelId;
+      model: AnyChatModelId;
       parts: ClientMessagePart[];
       duration?: string;
       interrupted?: boolean;
@@ -38,14 +38,14 @@ type StreamingState =
       status: "streaming";
       parts: ClientMessagePart[];
       mode: Mode;
-      model: SupportedChatModelId;
+      model: AnyChatModelId;
     };
 
 type ActiveStream = {
   requestId: string;
   controller: AbortController;
   mode: Mode;
-  model: SupportedChatModelId;
+  model: AnyChatModelId;
   parts: ClientMessagePart[];
   interruptedCaptured: boolean;
 };
@@ -53,12 +53,12 @@ type ActiveStream = {
 type SubmitParams = {
   userText: string;
   mode: Mode;
-  model: SupportedChatModelId;
+  model: AnyChatModelId;
 };
 
 type RunStreamParams = {
   mode: Mode;
-  model: SupportedChatModelId;
+  model: AnyChatModelId;
   request: (controller: AbortController) => Promise<ClientResponse<unknown>>;
 };
 

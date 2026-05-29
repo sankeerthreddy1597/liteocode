@@ -7,11 +7,15 @@ import { db } from "@litecode/database/client";
 import { Mode, MessageStatus } from "@litecode/database/enums";
 import { type ChatStreamEvent } from "@litecode/shared";
 import { isSupportedChatModel, resolveChatModel } from "../lib/models";
+import { isOllamaModelId } from "@litecode/shared";
 
 const submitSchema = z.object({
   content: z.string(),
   mode: z.enum(Mode),
-  model: z.string().refine(isSupportedChatModel, "Unsupported model"),
+  model: z.string().refine(
+    (id) => isSupportedChatModel(id) || isOllamaModelId(id),
+    "Unsupported model",
+  ),
 });
 
 const submitValidator = zValidator("json", submitSchema, (result, c) => {
@@ -187,7 +191,7 @@ const app = new Hono()
       );
     }
 
-    if (!isSupportedChatModel(resumableMessage.model)) {
+    if (!isSupportedChatModel(resumableMessage.model) && !isOllamaModelId(resumableMessage.model)) {
       return c.json(
         {
           error: `Session uses unsupported model: ${resumableMessage.model}`,

@@ -5,7 +5,7 @@ import { useKeyboard } from "@opentui/react";
 import prettyMs from "pretty-ms";
 import {
   DEFAULT_CHAT_MODEL_ID,
-  type SupportedChatModelId,
+  type AnyChatModelId,
 } from "@litecode/shared";
 import type { InferResponseType } from "hono/client";
 import { SessionShell } from "../components/session-shell";
@@ -41,7 +41,7 @@ function mapDbMessages(dbMessages: SessionData["messages"]): Message[] {
         role: "user",
         content: m.content,
         mode: m.mode,
-        model: m.model as SupportedChatModelId,
+        model: m.model as AnyChatModelId,
       };
     }
 
@@ -49,7 +49,7 @@ function mapDbMessages(dbMessages: SessionData["messages"]): Message[] {
       id: m.id,
       role: "assistant",
       content: m.content,
-      model: m.model as SupportedChatModelId,
+      model: m.model as AnyChatModelId,
       mode: m.mode,
       parts: [{ type: "text", text: m.content }],
       ...(m.duration != null ? { duration: prettyMs(m.duration * 1000) } : {}),

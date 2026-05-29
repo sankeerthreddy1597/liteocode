@@ -5,7 +5,7 @@ import * as Sentry from "@sentry/hono/bun";
 import { z } from "zod";
 import { db } from "@litecode/database/client";
 import { Role, Mode, MessageStatus } from "@litecode/database/enums";
-import { findSupportedChatModel } from "@litecode/shared";
+import { findSupportedChatModel, isOllamaModelId } from "@litecode/shared";
 
 const createSessionSchema = z.object({
   title: z.string(),
@@ -17,7 +17,10 @@ const createSessionSchema = z.object({
       mode: z.enum(Mode),
       model: z
         .string()
-        .refine((id) => !!findSupportedChatModel(id), "Unsupported model"),
+        .refine(
+          (id) => !!findSupportedChatModel(id) || isOllamaModelId(id),
+          "Unsupported model",
+        ),
     })
     .optional(),
 });

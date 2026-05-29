@@ -13,7 +13,7 @@ export function StatusBar() {
         <text attributes={TextAttributes.DIM} fg={colors.dimSeparator}>
           &gt;
         </text>
-        <text>sonnet-4.6</text>
+        <text>qwen3.5:9b</text>
       </box>
     </box>
   );

@@ -3,7 +3,7 @@ export type ModelPricing = {
   outputUsdPerMillionTokens: number;
 };
 
-export type SupportedProvider = "anthropic" | "openai";
+export type SupportedProvider = "anthropic" | "openai" | "ollama";
 
 type SupportedChatModelDefinition = {
   id: string;
@@ -65,8 +65,15 @@ export const SUPPORTED_CHAT_MODELS = [
 export type SupportedChatModel = (typeof SUPPORTED_CHAT_MODELS)[number];
 export type SupportedChatModelId = SupportedChatModel["id"];
 
+export type OllamaModelId = `ollama:${string}`;
+export type AnyChatModelId = SupportedChatModelId | OllamaModelId;
+
+export function isOllamaModelId(id: string): id is OllamaModelId {
+  return id.startsWith("ollama:");
+}
+
 export function findSupportedChatModel(modelId: string) {
   return SUPPORTED_CHAT_MODELS.find((model) => model.id === modelId);
 }
 
-export const DEFAULT_CHAT_MODEL_ID: SupportedChatModelId = "claude-sonnet-4-6";
+export const DEFAULT_CHAT_MODEL_ID: AnyChatModelId = "ollama:qwen3.5:9b";
