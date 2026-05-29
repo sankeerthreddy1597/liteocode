@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 // import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
+import * as Sentry from "@sentry/hono/bun";
 import { z } from "zod";
 import { db } from "@litecode/database/client";
 import { Role, Mode, MessageStatus } from "@litecode/database/enums";
@@ -26,6 +27,10 @@ const createSessionValidator = zValidator(
   createSessionSchema,
   (result, c) => {
     if (!result.success) {
+      Sentry.logger.warn("Session creation failed validation", {
+        path: c.req.path,
+        issues: result.error.issues.length,
+      });
       return c.json({ error: "Invalid request body" }, 400);
     }
   },
@@ -64,6 +69,10 @@ const app = new Hono()
     });
 
     if (!session) {
+      Sentry.logger.warn("Session not found", {
+        sessionId: id,
+        userId: "mock-user",
+      });
       return c.json({ error: "Session not found" }, 404);
     }
 
