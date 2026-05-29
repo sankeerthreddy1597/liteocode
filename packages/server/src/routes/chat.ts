@@ -12,10 +12,12 @@ import { isOllamaModelId } from "@litecode/shared";
 const submitSchema = z.object({
   content: z.string(),
   mode: z.enum(Mode),
-  model: z.string().refine(
-    (id) => isSupportedChatModel(id) || isOllamaModelId(id),
-    "Unsupported model",
-  ),
+  model: z
+    .string()
+    .refine(
+      (id) => isSupportedChatModel(id) || isOllamaModelId(id),
+      "Unsupported model",
+    ),
 });
 
 const submitValidator = zValidator("json", submitSchema, (result, c) => {
@@ -115,6 +117,14 @@ async function streamAIResponse(
         });
       }
 
+      if (part.type === "reasoning-delta") {
+        const event: ChatStreamEvent = { type: "reasoning-delta", text: part.text };
+        await stream.writeSSE({
+          event: "reasoning-delta",
+          data: JSON.stringify(event),
+        });
+      }
+
       if (part.type === "error") {
         throw part.error;
       }
@@ -191,7 +201,10 @@ const app = new Hono()
       );
     }
 
-    if (!isSupportedChatModel(resumableMessage.model) && !isOllamaModelId(resumableMessage.model)) {
+    if (
+      !isSupportedChatModel(resumableMessage.model) &&
+      !isOllamaModelId(resumableMessage.model)
+    ) {
       return c.json(
         {
           error: `Session uses unsupported model: ${resumableMessage.model}`,

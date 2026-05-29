@@ -70,6 +70,7 @@ function ChatMessage({ msg }: { msg: Message }) {
   return (
     <BotMessage
       parts={msg.parts}
+      reasoning={msg.reasoning}
       model={msg.model}
       mode={msg.mode}
       duration={msg.duration}
@@ -115,14 +116,16 @@ function SessionChat({ session }: { session: SessionData }) {
       {messages.map((msg) => (
         <ChatMessage key={msg.id} msg={msg} />
       ))}
-      {streaming.status === "streaming" && streaming.parts.length > 0 && (
-        <BotMessage
-          parts={streaming.parts}
-          model={streaming.model}
-          mode={streaming.mode}
-          streaming
-        />
-      )}
+      {streaming.status === "streaming" &&
+        (streaming.parts.length > 0 || streaming.reasoning.length > 0) && (
+          <BotMessage
+            parts={streaming.parts}
+            reasoning={streaming.reasoning || undefined}
+            model={streaming.model}
+            mode={streaming.mode}
+            streaming
+          />
+        )}
     </SessionShell>
   );
 }

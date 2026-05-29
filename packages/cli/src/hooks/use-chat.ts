@@ -27,6 +27,7 @@ export type Message =
       mode: Mode;
       model: AnyChatModelId;
       parts: ClientMessagePart[];
+      reasoning?: string;
       duration?: string;
       interrupted?: boolean;
     }
@@ -37,6 +38,7 @@ type StreamingState =
   | {
       status: "streaming";
       parts: ClientMessagePart[];
+      reasoning: string;
       mode: Mode;
       model: AnyChatModelId;
     };
@@ -47,6 +49,7 @@ type ActiveStream = {
   mode: Mode;
   model: AnyChatModelId;
   parts: ClientMessagePart[];
+  reasoning: string;
   interruptedCaptured: boolean;
 };
 
@@ -92,6 +95,7 @@ export function useChat(sessionId: string, initialMessages: Message[]) {
       setStreaming({
         status: "streaming",
         parts: snapshot,
+        reasoning: activeStream.reasoning,
         mode: activeStream.mode,
         model: activeStream.model,
       });
@@ -120,6 +124,7 @@ export function useChat(sessionId: string, initialMessages: Message[]) {
           content: fullText,
           mode: activeStream.mode,
           model: activeStream.model,
+          reasoning: activeStream.reasoning || undefined,
           parts,
           interrupted: true,
         },
@@ -183,6 +188,17 @@ export function useChat(sessionId: string, initialMessages: Message[]) {
         }
 
         switch (event.type) {
+          case "reasoning-delta": {
+            activeStream.reasoning += event.text;
+            setStreaming({
+              status: "streaming",
+              parts: [...activeStream.parts],
+              reasoning: activeStream.reasoning,
+              mode: activeStream.mode,
+              model: activeStream.model,
+            });
+            break;
+          }
           case "text-delta": {
             const last = parts[parts.length - 1];
             if (last && last.type === "text") {
@@ -209,6 +225,7 @@ export function useChat(sessionId: string, initialMessages: Message[]) {
                 content: fullText,
                 mode: activeStream.mode,
                 model: activeStream.model,
+                reasoning: activeStream.reasoning || undefined,
                 duration: prettyMs(event.durationMs),
                 parts: [...parts],
               },
@@ -240,11 +257,12 @@ export function useChat(sessionId: string, initialMessages: Message[]) {
         mode,
         model,
         parts: [],
+        reasoning: "",
         interruptedCaptured: false,
       };
 
       activeStreamRef.current = activeStream;
-      setStreaming({ status: "streaming", parts: [], mode, model });
+      setStreaming({ status: "streaming", parts: [], reasoning: "", mode, model });
 
       try {
         const response = await request(controller);
