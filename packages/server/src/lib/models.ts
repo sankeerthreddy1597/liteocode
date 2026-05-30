@@ -84,7 +84,7 @@ function resolveOpenAIModel(modelId: OpenAIModelId): ResolvedModel {
 
 function resolveOllamaModel(modelId: string): ResolvedModel {
   return {
-    model: ollamaProvider(modelId.slice("ollama:".length)),
+    model: ollamaProvider.chat(modelId.slice("ollama:".length)),
     provider: "ollama",
     modelId,
     providerOptions: undefined,

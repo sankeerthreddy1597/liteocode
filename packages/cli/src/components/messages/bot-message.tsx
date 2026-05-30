@@ -121,9 +121,25 @@ export function BotMessage({
                   }}
                   width="100%"
                   paddingX={2}
+                  flexDirection="row"
+                  gap={1}
                 >
+                  <text
+                    attributes={interrupted ? TextAttributes.DIM : 0}
+                    fg={
+                      interrupted
+                        ? undefined
+                        : part.status === "calling"
+                          ? colors.thinkingBorder
+                          : colors.success
+                    }
+                  >
+                    ◉
+                  </text>
                   <text attributes={TextAttributes.DIM}>
-                    <em fg={colors.info}>{formatToolName(part.name)}:</em>{" "}
+                    <em attributes={TextAttributes.ITALIC}>
+                      {formatToolName(part.name)}:
+                    </em>{" "}
                     {formatToolArgs(part)}
                     {part.status === "calling" ? " …" : ""}
                   </text>
