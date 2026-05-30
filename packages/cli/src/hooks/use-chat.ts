@@ -5,12 +5,21 @@ import type { ClientResponse } from "hono/client";
 import { apiClient } from "../lib/api-client";
 import { getErrorMessage } from "../lib/http-errors";
 import type { Mode } from "@litecode/database/enums";
-import {
-  chatStreamEventSchema,
-  type AnyChatModelId,
-} from "@litecode/shared";
+import { chatStreamEventSchema, type AnyChatModelId } from "@litecode/shared";
 
-export type ClientMessagePart = { type: "text"; text: string };
+export type ClientToolCallPart = {
+  type: "tool-call";
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+  result?: string;
+  status: "calling" | "done";
+};
+
+export type ClientMessagePart =
+  | { type: "reasoning"; text: string }
+  | ClientToolCallPart
+  | { type: "text"; text: string };
 
 export type Message =
   | {
@@ -189,14 +198,35 @@ export function useChat(sessionId: string, initialMessages: Message[]) {
 
         switch (event.type) {
           case "reasoning-delta": {
-            activeStream.reasoning += event.text;
-            setStreaming({
-              status: "streaming",
-              parts: [...activeStream.parts],
-              reasoning: activeStream.reasoning,
-              mode: activeStream.mode,
-              model: activeStream.model,
+            const last = parts[parts.length - 1];
+            if (last && last.type === "reasoning") {
+              last.text += event.text;
+            } else {
+              parts.push({ type: "reasoning", text: event.text });
+            }
+            emitParts(activeStream.requestId, parts);
+            break;
+          }
+          case "tool-call":
+            parts.push({
+              type: "tool-call",
+              id: event.toolCallId,
+              name: event.toolName,
+              args: event.args,
+              status: "calling",
             });
+            emitParts(activeStream.requestId, parts);
+            break;
+          case "tool-result": {
+            const tc = parts.find(
+              (p): p is ClientToolCallPart =>
+                p.type === "tool-call" && p.id === event.toolCallId,
+            );
+            if (tc) {
+              tc.result = event.result;
+              tc.status = "done";
+            }
+            emitParts(activeStream.requestId, parts);
             break;
           }
           case "text-delta": {
@@ -262,7 +292,13 @@ export function useChat(sessionId: string, initialMessages: Message[]) {
       };
 
       activeStreamRef.current = activeStream;
-      setStreaming({ status: "streaming", parts: [], reasoning: "", mode, model });
+      setStreaming({
+        status: "streaming",
+        parts: [],
+        reasoning: "",
+        mode,
+        model,
+      });
 
       try {
         const response = await request(controller);

@@ -46,6 +46,7 @@
       "dependencies": {
         "@ai-sdk/anthropic": "^3.0.81",
         "@ai-sdk/openai": "^3.0.67",
+        "@ai-sdk/provider-utils": "^4.0.27",
         "@hono/zod-validator": "^0.8.0",
         "@litecode/database": "workspace:*",
         "@litecode/shared": "workspace:*",
