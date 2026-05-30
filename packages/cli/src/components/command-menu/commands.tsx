@@ -1,4 +1,3 @@
-import { SUPPORTED_CHAT_MODELS } from "@litecode/shared";
 import {
   AgentsDialogContent,
   ModelsDialogContent,
@@ -41,7 +40,7 @@ export const COMMANDS: Command[] = [
         title: "Select Model",
         children: (
           <ModelsDialogContent
-            models={SUPPORTED_CHAT_MODELS.map((model) => model.id)}
+            models={ctx.availableModels}
             onSelectModel={ctx.setModel}
           />
         ),

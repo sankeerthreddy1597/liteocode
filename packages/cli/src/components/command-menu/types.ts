@@ -11,6 +11,7 @@ export type CommandContext = {
   mode: Mode;
   setMode: (mode: Mode) => void;
   setModel: (model: AnyChatModelId) => void;
+  availableModels: AnyChatModelId[];
 };
 
 export type Command = {

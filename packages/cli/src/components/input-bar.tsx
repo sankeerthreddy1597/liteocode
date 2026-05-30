@@ -28,7 +28,7 @@ export const TEXTAREA_KEY_BINDINGS: KeyBinding[] = [
 ];
 
 export function InputBar({ onSubmit, disabled = false }: Props) {
-  const { mode, toggleMode, setMode, setModel } = usePromptConfig();
+  const { mode, toggleMode, setMode, setModel, availableModels } = usePromptConfig();
   const textareaRef = useRef<TextareaRenderable>(null);
   const onSubmitRef = useRef<() => void>(() => {});
   const renderer = useRenderer();
@@ -84,12 +84,13 @@ export function InputBar({ onSubmit, disabled = false }: Props) {
           mode,
           setMode,
           setModel,
+          availableModels,
         });
       } else {
         textarea.insertText(command.value + " ");
       }
     },
-    [renderer, toast, dialog, navigate, mode, setMode, setModel],
+    [renderer, toast, dialog, navigate, mode, setMode, setModel, availableModels],
   );
 
   const handleCommandExecute = useCallback(
