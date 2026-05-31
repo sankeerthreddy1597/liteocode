@@ -10,7 +10,15 @@ A terminal-based AI coding assistant. Chat with Claude, GPT, or local Ollama mod
 curl -fsSL https://raw.githubusercontent.com/sankeerthreddy1597/liteocode/main/install.sh | bash
 ```
 
-Installs the `liteocode` binary to `~/.local/bin`. Set `LITEOCODE_INSTALL_DIR` to override the install location.
+Installs the `liteocode` binary to `~/.local/bin`. If that directory isn't in your PATH yet:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+```
+
+Set `LITEOCODE_INSTALL_DIR` to install somewhere else.
+
+> **Note:** Currently supports Linux (x64, arm64) and macOS (Apple Silicon). Intel Mac support coming soon.
 
 ## Features
 
