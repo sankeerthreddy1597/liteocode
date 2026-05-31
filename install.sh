@@ -27,6 +27,11 @@ case "$ARCH" in
     ;;
 esac
 
+if [[ "$OS" == "darwin" && "$ARCH" == "x64" ]]; then
+  echo "error: Intel Macs are not supported. Only Apple Silicon (arm64) is available." >&2
+  exit 1
+fi
+
 ASSET="${BIN}-${OS}-${ARCH}"
 URL="https://github.com/${REPO}/releases/latest/download/${ASSET}"
 
