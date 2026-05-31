@@ -1,53 +1,73 @@
-# litecode
+# liteocode
 
-A terminal-based AI coding assistant with a chat interface. Built as a monorepo with a CLI frontend, HTTP API backend, and PostgreSQL database.
+A terminal-based AI coding assistant. Chat with Claude, GPT, or local Ollama models directly from your terminal — no server, no database, no setup beyond your API keys.
 
-> **Work in progress** — core infrastructure is in place; AI chat integration is actively being developed.
+![liteocode](https://github.com/sankeerthreddy1597/liteocode/raw/main/docs/screenshot.png)
 
-## Overview
+## Installation
 
-litecode runs in your terminal and lets you chat with AI models (Claude and GPT) within the context of your codebase. Sessions and messages are persisted so you can resume conversations across runs.
+> Coming soon — a one-line install script is in the works.
+
+In the meantime, see [Running from Source](#running-from-source) below.
+
+## Features
+
+- **No server required** — runs entirely as a local CLI; sessions are stored as JSON files at `~/.litecode/sessions/`
+- **First-run setup** — prompts for API keys on first launch and saves them to `~/.litecode/config.json`
+- **Ollama support** — use any locally running Ollama model (free, private, no API key needed)
+- **Plan and Build modes** — switch between planning a task and executing it with tool calls
+- **Extended thinking** — reasoning/thinking tokens surfaced for models that support it (Claude, Qwen3 via Ollama)
+- **Multi-step tool calling** — the assistant can call tools across multiple turns to complete complex tasks
+- **Persistent sessions** — resume any previous conversation from the session list
+
+## Supported Models
+
+| Provider | Models |
+|---|---|
+| **Anthropic** | `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5` |
+| **OpenAI** | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano` |
+| **Ollama** | Any model running locally — picked up automatically from your Ollama instance |
+
+You only need API keys for the providers you want to use. Ollama works with no key at all.
+
+## Running from Source
+
+**Prerequisites:** [Bun](https://bun.sh)
+
+```bash
+# Clone and install dependencies
+git clone https://github.com/sankeerthreddy1597/liteocode.git
+cd liteocode
+bun install
+
+# Start the CLI
+bun run dev
+```
+
+On first run you'll be walked through entering your API keys. You can skip any provider you don't use.
+
+## Environment Variables
+
+These are optional — if not set, defaults are used.
+
+| Variable | Default | Description |
+|---|---|---|
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Base URL for your Ollama instance |
+
+## Local Data
+
+liteocode stores everything under `~/.litecode/`:
+
+```
+~/.litecode/
+  config.json        # API keys
+  sessions/
+    <id>.json        # One file per session
+```
 
 ## Packages
 
 | Package | Description |
 |---|---|
-| `packages/cli` | Terminal UI built with [@opentui/react](https://github.com/max-scope/opentui) — renders the chat interface, session list, and command menu |
-| `packages/server` | Hono HTTP API — manages sessions and messages, runs on port 3000 |
-| `packages/database` | Prisma client + schema for PostgreSQL |
-| `packages/shared` | Shared types, Zod schemas, and supported model definitions |
-
-## Supported Models
-
-- **Anthropic:** `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5`
-- **OpenAI:** `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`
-- **Ollama** *(coming soon)* — local models via Ollama will be supported in a future release
-
-## Getting Started
-
-**Prerequisites:** [Bun](https://bun.sh) and a PostgreSQL database.
-
-```bash
-# Install dependencies
-bun install
-
-# Set up environment variables
-cp .env.example .env
-# Fill in DATABASE_URL in .env
-
-# Generate Prisma client
-cd packages/database && bun run db:generate
-
-# Run the server (port 3000)
-bun run dev:server
-
-# Run the CLI (in a separate terminal)
-bun run dev:cli
-```
-
-## Environment Variables
-
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `API_URL` | Server URL for the CLI to connect to (default: `http://localhost:3000`) |
+| `packages/cli` | Terminal UI and all runtime logic |
+| `packages/shared` | Shared types, Zod schemas, and model definitions |
