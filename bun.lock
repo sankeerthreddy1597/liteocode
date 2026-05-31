@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "litecode",
+      "dependencies": {
+        "dotenv": "^17.4.2",
+      },
     },
     "packages/cli": {
       "name": "@litecode/cli",
