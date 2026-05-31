@@ -16,7 +16,11 @@ import {
 } from "@litecode/shared";
 
 const FALLBACK_MODEL_ID: AnyChatModelId = "claude-sonnet-4-6";
-import { apiClient } from "../../lib/api-client";
+const CLOUD_MODEL_IDS = SUPPORTED_CHAT_MODELS.map((m) => m.id as AnyChatModelId);
+
+const OLLAMA_BASE_URL = (
+  process.env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1"
+).replace(/\/v1\/?$/, "");
 
 type PromptConfigContextValue = {
   mode: ModeType;
@@ -27,16 +31,12 @@ type PromptConfigContextValue = {
   availableModels: AnyChatModelId[];
 };
 
-const PromptConfigContext = createContext<PromptConfigContextValue | null>(
-  null,
-);
+const PromptConfigContext = createContext<PromptConfigContextValue | null>(null);
 
 export function usePromptConfig(): PromptConfigContextValue {
   const value = useContext(PromptConfigContext);
   if (!value) {
-    throw new Error(
-      "usePromptConfig must be used within a PromptConfigProvider",
-    );
+    throw new Error("usePromptConfig must be used within a PromptConfigProvider");
   }
   return value;
 }
@@ -45,27 +45,20 @@ type PromptConfigProviderProps = {
   children: ReactNode;
 };
 
-const CLOUD_MODEL_IDS = SUPPORTED_CHAT_MODELS.map(
-  (m) => m.id as AnyChatModelId,
-);
-
 export function PromptConfigProvider({ children }: PromptConfigProviderProps) {
   const [mode, setMode] = useState<ModeType>(Mode.BUILD);
   const [model, setModel] = useState<AnyChatModelId>(DEFAULT_CHAT_MODEL_ID);
   const [ollamaModels, setOllamaModels] = useState<AnyChatModelId[]>([]);
 
   useEffect(() => {
-    apiClient.models.ollama
-      .$get()
+    fetch(`${OLLAMA_BASE_URL}/api/tags`)
       .then((res) => res.json())
-      .then((data) => {
-        const fetched = data.models as AnyChatModelId[];
+      .then((data: unknown) => {
+        const models = (data as { models?: { name: string }[] }).models ?? [];
+        const fetched = models.map((m) => `ollama:${m.name}` as AnyChatModelId);
         setOllamaModels(fetched);
 
-        if (
-          isOllamaModelId(DEFAULT_CHAT_MODEL_ID) &&
-          !fetched.includes(DEFAULT_CHAT_MODEL_ID)
-        ) {
+        if (isOllamaModelId(DEFAULT_CHAT_MODEL_ID) && !fetched.includes(DEFAULT_CHAT_MODEL_ID)) {
           setModel(FALLBACK_MODEL_ID);
         }
       })
@@ -80,21 +73,11 @@ export function PromptConfigProvider({ children }: PromptConfigProviderProps) {
     setMode((m) => (m === Mode.BUILD ? Mode.PLAN : Mode.BUILD));
   }, []);
 
-  const availableModels: AnyChatModelId[] = [
-    ...CLOUD_MODEL_IDS,
-    ...ollamaModels,
-  ];
+  const availableModels: AnyChatModelId[] = [...CLOUD_MODEL_IDS, ...ollamaModels];
 
   return (
     <PromptConfigContext.Provider
-      value={{
-        mode,
-        toggleMode,
-        setMode,
-        model,
-        setModel,
-        availableModels,
-      }}
+      value={{ mode, toggleMode, setMode, model, setModel, availableModels }}
     >
       {children}
     </PromptConfigContext.Provider>

@@ -11,7 +11,7 @@ export function UserMessage({ message, mode }: Props) {
   const { colors } = useTheme();
 
   return (
-    <box width="100%" alignItems="center">
+    <box width="100%" alignItems="center" paddingBottom={1}>
       <box
         border={["left"]}
         borderColor={mode === Mode.PLAN ? colors.planMode : colors.primary}

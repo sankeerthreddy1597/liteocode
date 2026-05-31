@@ -4,18 +4,11 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router";
 import { useDialog } from "../../providers/dialog";
 import { useToast } from "../../providers/toast";
-import { apiClient } from "../../lib/api-client";
-import { getErrorMessage } from "../../lib/http-errors";
+import { listSessions, type SessionSummary } from "../../lib/sessions";
 import { DialogSearchList } from "../dialog-search-list";
-import type { InferResponseType } from "hono/client";
-
-type Session = InferResponseType<
-  (typeof apiClient.sessions)["$get"],
-  200
->[number];
 
 export const SessionsDialogContent = () => {
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const { close } = useDialog();
   const navigate = useNavigate();
@@ -24,34 +17,22 @@ export const SessionsDialogContent = () => {
   useEffect(() => {
     let ignore = false;
 
-    const fetchSessions = async () => {
-      try {
-        const res = await apiClient.sessions.$get();
-        if (!res.ok) {
-          throw new Error(await getErrorMessage(res));
-        }
-
-        const data = await res.json();
-
+    listSessions()
+      .then((data) => {
         if (!ignore) {
           setSessions(data);
           setLoading(false);
         }
-      } catch (error) {
+      })
+      .catch((error) => {
         if (!ignore) {
           show({
             variant: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Failed to fetch sessions",
+            message: error instanceof Error ? error.message : "Failed to load sessions",
           });
           close();
         }
-      }
-    };
-
-    fetchSessions();
+      });
 
     return () => {
       ignore = true;
@@ -59,7 +40,7 @@ export const SessionsDialogContent = () => {
   }, [close, show]);
 
   const handleSelect = useCallback(
-    (session: Session) => {
+    (session: SessionSummary) => {
       close();
       navigate(`/sessions/${session.id}`);
     },
@@ -78,9 +59,7 @@ export const SessionsDialogContent = () => {
     <DialogSearchList
       items={sessions}
       onSelect={handleSelect}
-      filterFn={(s, query) =>
-        s.title.toLowerCase().includes(query.toLowerCase())
-      }
+      filterFn={(s, query) => s.title.toLowerCase().includes(query.toLowerCase())}
       renderItem={(session, isSelected) => (
         <>
           <text selectable={false} fg={isSelected ? "black" : "white"}>

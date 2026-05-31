@@ -5,12 +5,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:cli": "bun run --watch packages/cli/src/index.tsx",
-    "dev:server": "bun run --hot packages/server/src/index.ts",
-    "build:cli": "bun run --filter @litecode/cli build",
-    "link:cli": "bun run build:cli && cd packages/cli && bun link"
-  },
-  "dependencies": {
-    "dotenv": "^17.4.2"
+    "dev": "bun run --watch packages/cli/src/index.tsx",
+    "build": "bun run --filter @litecode/cli build",
+    "link": "bun run build && cd packages/cli && bun link"
   }
 }

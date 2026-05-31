@@ -1,10 +1,6 @@
 import type { ModeType } from "@litecode/shared";
 
-type SystemPromptParams = {
-  mode: ModeType;
-};
-
-export function buildSystemPrompt({ mode }: SystemPromptParams): string {
+export function buildSystemPrompt({ mode }: { mode: ModeType }): string {
   const parts: string[] = [];
 
   parts.push(`You are an expert software engineer working as a coding assistant inside a terminal application.

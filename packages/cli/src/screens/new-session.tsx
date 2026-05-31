@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
 import { z } from "zod";
-import { Mode, modeSchema } from "@litecode/shared";
+import { modeSchema } from "@litecode/shared";
 import { useNavigate, useLocation } from "react-router";
 import { SessionShell } from "../components/session-shell";
 import { UserMessage } from "../components/messages";
 import { useToast } from "../providers/toast";
-import { apiClient } from "../lib/api-client";
-import { getErrorMessage } from "../lib/http-errors";
+import { createSession } from "../lib/sessions";
 
 const newSessionStateSchema = z.object({
   message: z.string(),
@@ -25,33 +24,21 @@ export function NewSession() {
     return parsed.success ? parsed.data : null;
   }, [location.state]);
 
-  // Guard: if navigated here directly without state, go home
   useEffect(() => {
     if (!state) {
       navigate("/", { replace: true });
     }
   }, [state, navigate]);
 
-  // Create the session on mount — this screen exists to do this
   useEffect(() => {
     if (!state || hasStartedRef.current) return;
-
     hasStartedRef.current = true;
 
     let ignore = false;
-    const createSession = async () => {
+    const start = async () => {
       try {
-        const res = await apiClient.sessions.$post({
-          json: {
-            title: state.message.slice(0, 100),
-          },
-        });
-
+        const session = await createSession(state.message.slice(0, 100));
         if (ignore) return;
-        if (!res.ok) {
-          throw new Error(await getErrorMessage(res));
-        }
-        const session = await res.json();
         navigate(`/sessions/${session.id}`, {
           replace: true,
           state: { session, initialPrompt: state },
@@ -60,14 +47,13 @@ export function NewSession() {
         if (ignore) return;
         toast.show({
           variant: "error",
-          message:
-            error instanceof Error ? error.message : "Failed to create session",
+          message: error instanceof Error ? error.message : "Failed to create session",
         });
         navigate("/", { replace: true });
       }
     };
 
-    createSession();
+    void start();
     return () => {
       ignore = true;
     };

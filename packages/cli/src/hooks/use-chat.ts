@@ -1,113 +1,300 @@
-import { useMemo } from "react";
-import { useChat as useAiChat } from "@ai-sdk/react";
-import {
-  DefaultChatTransport,
-  type InferUITools,
-  lastAssistantMessageIsCompleteWithToolCalls,
-  type LanguageModelUsage,
-  type UIMessage,
-} from "ai";
-import {
-  type ModeType,
-  type ToolContracts,
-  type AnyChatModelId,
-} from "@litecode/shared";
-import { apiClient } from "../lib/api-client";
+import { useState, useCallback, useRef } from "react";
+import { streamText, stepCountIs } from "ai";
+import { getToolContracts, type ModeType, type AnyChatModelId } from "@litecode/shared";
+import { resolveChatModel } from "../lib/models";
+import { buildSystemPrompt } from "../lib/system-prompt";
 import { executeLocalTool } from "../lib/local-tools";
+import { saveSessionMessages } from "../lib/sessions";
 
-export type ChatMessageMetadata = {
-  mode?: ModeType;
-  model?: AnyChatModelId | string;
-  durationMs?: number;
-  usage?: LanguageModelUsage;
-};
+// ---- Message types --------------------------------------------------------
 
-type ChatTools = {
-  [Name in keyof InferUITools<ToolContracts>]: {
-    input: InferUITools<ToolContracts>[Name]["input"];
-    output: unknown;
+export type TextPart = { type: "text"; text: string };
+export type ReasoningPart = { type: "reasoning"; text: string };
+export type ToolPart = {
+  type: `tool-${string}`;
+  toolCallId: string;
+  input: Record<string, unknown>;
+} & (
+  | { state: "call" }
+  | { state: "partial-call" }
+  | { state: "output-available"; output: unknown }
+  | { state: "output-error"; errorText: string }
+);
+
+export type MessagePart = TextPart | ReasoningPart | ToolPart;
+
+export type Message = {
+  id: string;
+  role: "user" | "assistant";
+  parts: MessagePart[];
+  metadata?: {
+    mode: ModeType;
+    model: string;
+    durationMs?: number;
   };
 };
 
-export type Message = UIMessage<ChatMessageMetadata, never, ChatTools>;
+// ---- Helpers --------------------------------------------------------------
+
+function isToolPart(part: MessagePart): part is ToolPart {
+  return part.type.startsWith("tool-");
+}
+
+// Text-only history — consistent with original server behaviour
+function buildCoreHistory(messages: Message[]): { role: "user" | "assistant"; content: string }[] {
+  return messages.flatMap((msg) => {
+    const text = msg.parts
+      .filter((p) => p.type === "text")
+      .map((p) => p.text)
+      .join("");
+    if (!text.trim()) return [];
+    return [{ role: msg.role as "user" | "assistant", content: text }];
+  });
+}
+
+// Parses <think>…</think> tags from Ollama text-delta chunks, routing the
+// content inside to reasoning events and everything outside to text events.
+function makeThinkParser() {
+  let buffer = "";
+  let inThinkBlock = false;
+
+  return function process(chunk: string): { reasoning: string; text: string } {
+    let remaining = buffer + chunk;
+    buffer = "";
+    let reasoningOut = "";
+    let textOut = "";
+
+    while (remaining.length > 0) {
+      if (inThinkBlock) {
+        const closeIdx = remaining.indexOf("</think>");
+        if (closeIdx === -1) {
+          const CLOSE = "</think>";
+          let partialLen = 0;
+          for (let i = 1; i < CLOSE.length; i++) {
+            if (remaining.endsWith(CLOSE.slice(0, i))) partialLen = i;
+          }
+          const safeEnd = remaining.length - partialLen;
+          if (safeEnd > 0) reasoningOut += remaining.slice(0, safeEnd);
+          buffer = remaining.slice(safeEnd);
+          remaining = "";
+        } else {
+          if (closeIdx > 0) reasoningOut += remaining.slice(0, closeIdx);
+          inThinkBlock = false;
+          remaining = remaining.slice(closeIdx + "</think>".length);
+        }
+      } else {
+        const openIdx = remaining.indexOf("<think>");
+        if (openIdx === -1) {
+          const OPEN = "<think>";
+          let partialLen = 0;
+          for (let i = 1; i < OPEN.length; i++) {
+            if (remaining.endsWith(OPEN.slice(0, i))) partialLen = i;
+          }
+          const safeEnd = remaining.length - partialLen;
+          if (safeEnd > 0) textOut += remaining.slice(0, safeEnd);
+          buffer = remaining.slice(safeEnd);
+          remaining = "";
+        } else {
+          if (openIdx > 0) textOut += remaining.slice(0, openIdx);
+          inThinkBlock = true;
+          remaining = remaining.slice(openIdx + "<think>".length);
+        }
+      }
+    }
+
+    return { reasoning: reasoningOut, text: textOut };
+  };
+}
+
+// ---- Hook -----------------------------------------------------------------
 
 export function useChat(sessionId: string, initialMessages: Message[]) {
-  const transport = useMemo(() => {
-    return new DefaultChatTransport<Message>({
-      api: apiClient.chat.$url().toString(),
-      headers() {
-        return new Headers();
-      },
-      prepareSendMessagesRequest({ messages }) {
-        const message = messages[messages.length - 1];
-        if (!message) throw new Error("No message to send");
+  const [messages, _setMessages] = useState<Message[]>(initialMessages);
+  const [status, setStatus] = useState<"idle" | "submitted" | "streaming" | "error">("idle");
+  const [error, setError] = useState<Error | null>(null);
 
-        const metadata = messages.findLast(
-          (m) => m.metadata?.mode && m.metadata?.model,
-        )?.metadata;
-        const previousMessage = messages[messages.length - 2];
-        const requestMessages =
-          message.role === "assistant" && previousMessage?.role === "user"
-            ? [previousMessage, message]
-            : [message];
-
-        return {
-          body: {
-            id: sessionId,
-            messages: requestMessages,
-            mode: message.metadata?.mode ?? metadata?.mode,
-            model: message.metadata?.model ?? metadata?.model,
-          },
-        };
-      },
-    });
-  }, [sessionId]);
-
-  const chat = useAiChat<Message>({
-    id: sessionId,
-    messages: initialMessages,
-    transport,
-    onToolCall({ toolCall }) {
-      const mode = chat.messages.at(-1)?.metadata?.mode ?? "BUILD";
-
-      void executeLocalTool(toolCall.toolName, toolCall.input, mode)
-        .then((output) =>
-          chat.addToolOutput({
-            tool: toolCall.toolName as keyof ChatTools,
-            toolCallId: toolCall.toolCallId,
-            output,
-          }),
-        )
-        .catch((error) =>
-          chat.addToolOutput({
-            tool: toolCall.toolName as keyof ChatTools,
-            toolCallId: toolCall.toolCallId,
-            state: "output-error",
-            errorText: error instanceof Error ? error.message : String(error),
-          }),
-        );
+  // Keep a ref in sync so the submit callback never has stale message state
+  const messagesRef = useRef(initialMessages);
+  const setMessages = useCallback(
+    (updater: Message[] | ((prev: Message[]) => Message[])) => {
+      const next = typeof updater === "function" ? updater(messagesRef.current) : updater;
+      messagesRef.current = next;
+      _setMessages(next);
     },
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-  });
+    [],
+  );
 
-  return {
-    messages: chat.messages,
-    status: chat.status,
-    error: chat.error,
-    submit: (params: {
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const abort = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setStatus("idle");
+  }, []);
+
+  const interrupt = abort;
+
+  const submit = useCallback(
+    async ({
+      userText,
+      mode,
+      model,
+    }: {
       userText: string;
       mode: ModeType;
       model: AnyChatModelId;
     }) => {
-      return chat.sendMessage({
-        text: params.userText,
-        metadata: {
-          mode: params.mode,
-          model: params.model,
-        },
-      });
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      setError(null);
+
+      const prevMessages = messagesRef.current;
+
+      const userMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "user",
+        parts: [{ type: "text", text: userText }],
+        metadata: { mode, model },
+      };
+      setMessages([...prevMessages, userMessage]);
+      setStatus("submitted");
+
+      const assistantId = crypto.randomUUID();
+      const assistantParts: MessagePart[] = [];
+      const startTime = Date.now();
+
+      const emitAssistant = (durationMs?: number) => {
+        const msg: Message = {
+          id: assistantId,
+          role: "assistant",
+          parts: [...assistantParts],
+          metadata: { mode, model, ...(durationMs != null ? { durationMs } : {}) },
+        };
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id === assistantId);
+          return exists ? prev.map((m) => (m.id === assistantId ? msg : m)) : [...prev, msg];
+        });
+      };
+
+      const appendReasoning = (text: string) => {
+        const last = assistantParts[assistantParts.length - 1];
+        if (last?.type === "reasoning") {
+          last.text += text;
+        } else {
+          assistantParts.push({ type: "reasoning", text });
+        }
+      };
+
+      const appendText = (text: string) => {
+        const last = assistantParts[assistantParts.length - 1];
+        if (last?.type === "text") {
+          last.text += text;
+        } else {
+          assistantParts.push({ type: "text", text });
+        }
+      };
+
+      const parseThink = makeThinkParser();
+
+      try {
+        const resolvedModel = resolveChatModel(model);
+        const contracts = getToolContracts(mode);
+
+        // Tools with execute so each streamText call closes after one step.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const toolsWithExecute = Object.fromEntries(
+          Object.entries(contracts).map(([name, contract]) => [
+            name,
+            {
+              description: contract.description,
+              inputSchema: contract.inputSchema,
+              execute: async (args: Record<string, unknown>) => {
+                try {
+                  return await executeLocalTool(name, args, mode);
+                } catch (err) {
+                  return { _toolError: err instanceof Error ? err.message : String(err) };
+                }
+              },
+            },
+          ]),
+        );
+
+        setStatus("streaming");
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result = streamText({
+          model: resolvedModel.model,
+          system: buildSystemPrompt({ mode }),
+          messages: [
+            ...buildCoreHistory(prevMessages),
+            { role: "user" as const, content: userText },
+          ],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tools: toolsWithExecute as any,
+          stopWhen: stepCountIs(50),
+          abortSignal: controller.signal,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          providerOptions: resolvedModel.providerOptions as any,
+        });
+
+        for await (const part of result.fullStream) {
+          if (controller.signal.aborted) break;
+
+          if (part.type === "reasoning-delta") {
+            appendReasoning(part.text);
+            emitAssistant();
+          }
+
+          if (part.type === "text-delta") {
+            const { reasoning, text } = parseThink(part.text);
+            if (reasoning) appendReasoning(reasoning);
+            if (text) appendText(text);
+            emitAssistant();
+          }
+
+          if (part.type === "tool-call") {
+            assistantParts.push({
+              type: `tool-${part.toolName}` as `tool-${string}`,
+              toolCallId: part.toolCallId,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              input: (part as any).input as Record<string, unknown>,
+              state: "call",
+            });
+            emitAssistant();
+          }
+
+          if (part.type === "tool-result") {
+            const toolPart = assistantParts.find(
+              (p): p is ToolPart => isToolPart(p) && p.toolCallId === part.toolCallId,
+            );
+            if (toolPart) {
+              const out = part.output as Record<string, unknown> | null;
+              if (out && "_toolError" in out) {
+                Object.assign(toolPart, { state: "output-error", errorText: String(out._toolError) });
+              } else {
+                Object.assign(toolPart, { state: "output-available", output: out });
+              }
+            }
+            emitAssistant();
+          }
+        }
+
+        if (!controller.signal.aborted) {
+          const durationMs = Date.now() - startTime;
+          emitAssistant(durationMs);
+          void saveSessionMessages(sessionId, messagesRef.current);
+          setStatus("idle");
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const e = err instanceof Error ? err : new Error(String(err));
+        setError(e);
+        setStatus("error");
+      }
     },
-    abort: chat.stop,
-    interrupt: chat.stop,
-  };
+    [sessionId, setMessages],
+  );
+
+  return { messages, status, error, submit, abort, interrupt };
 }

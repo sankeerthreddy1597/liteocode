@@ -35,10 +35,7 @@ function ThinkingSection({ reasoning, active }: ThinkingProps) {
 }
 
 type ClientMessagePart = Message["parts"][number];
-type ToolPart = Extract<
-  ClientMessagePart,
-  { type: `tool-${string}` | "dynamic-tool" }
->;
+type ToolPart = Extract<ClientMessagePart, { type: `tool-${string}` }>;
 
 type Props = {
   parts: ClientMessagePart[];
@@ -55,7 +52,7 @@ function formatToolName(name: string): string {
 }
 
 function isToolPart(part: ClientMessagePart): part is ToolPart {
-  return part.type === "dynamic-tool" || part.type.startsWith("tool-");
+  return part.type.startsWith("tool-");
 }
 
 function formatToolArgs(tc: ToolPart): string {
@@ -115,10 +112,7 @@ export function BotMessage({
             }
 
             if (isToolPart(part)) {
-              const toolName =
-                part.type === "dynamic-tool"
-                  ? part.toolName
-                  : part.type.slice("tool-".length);
+              const toolName = part.type.slice("tool-".length);
               return (
                 <box
                   key={part.toolCallId}

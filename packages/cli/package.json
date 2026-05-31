@@ -11,20 +11,20 @@
     "build": "bun build src/index.tsx --outdir dist --target bun"
   },
   "devDependencies": {
-    "@litecode/server": "workspace:*",
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@ai-sdk/react": "^3.0.195",
+    "@ai-sdk/anthropic": "^3.0.81",
+    "@ai-sdk/openai": "^3.0.67",
     "@litecode/shared": "workspace:*",
     "@opentui/core": "^0.2.10",
     "@opentui/react": "^0.2.10",
     "ai": "^6.0.193",
+    "ai-sdk-ollama": "^3.8.4",
     "date-fns": "^4.4.0",
-    "hono": "^4.12.21",
     "opentui-spinner": "^0.0.6",
     "pretty-ms": "^9.3.0",
     "react": "^19.2.6",
