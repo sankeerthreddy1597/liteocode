@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { useDialog } from "../../providers/dialog";
 import { DialogSearchList } from "../dialog-search-list";
-import { Mode } from "@litecode/database/enums";
 import type { AnyChatModelId } from "@litecode/shared";
 
 type ModelsDialogContentProps = {

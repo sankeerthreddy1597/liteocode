@@ -1,15 +1,14 @@
-import type { AnyChatModelId } from "@litecode/shared";
-import type { Mode } from "@litecode/database/enums";
 import type { DialogContextValue } from "../../providers/dialog";
 import type { ToastContextValue } from "../../providers/toast";
+import type { ModeType, AnyChatModelId } from "@litecode/shared";
 
 export type CommandContext = {
   exit: () => void;
   toast: ToastContextValue;
   dialog: DialogContextValue;
   navigate: (path: string) => void;
-  mode: Mode;
-  setMode: (mode: Mode) => void;
+  mode: ModeType;
+  setMode: (mode: ModeType) => void;
   setModel: (model: AnyChatModelId) => void;
   availableModels: AnyChatModelId[];
 };
