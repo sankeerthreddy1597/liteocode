@@ -22,11 +22,11 @@ In the meantime, see [Running from Source](#running-from-source) below.
 
 ## Supported Models
 
-| Provider | Models |
-|---|---|
-| **Anthropic** | `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5` |
-| **OpenAI** | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano` |
-| **Ollama** | Any model running locally — picked up automatically from your Ollama instance |
+| Provider      | Models                                                                        |
+| ------------- | ----------------------------------------------------------------------------- |
+| **Anthropic** | `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5`                    |
+| **OpenAI**    | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`                                     |
+| **Ollama**    | Any model running locally — picked up automatically from your Ollama instance |
 
 You only need API keys for the providers you want to use. Ollama works with no key at all.
 
@@ -50,8 +50,8 @@ On first run you'll be walked through entering your API keys. You can skip any p
 
 These are optional — if not set, defaults are used.
 
-| Variable | Default | Description |
-|---|---|---|
+| Variable          | Default                  | Description                       |
+| ----------------- | ------------------------ | --------------------------------- |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Base URL for your Ollama instance |
 
 ## Local Data
@@ -67,7 +67,7 @@ liteocode stores everything under `~/.litecode/`:
 
 ## Packages
 
-| Package | Description |
-|---|---|
-| `packages/cli` | Terminal UI and all runtime logic |
+| Package           | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| `packages/cli`    | Terminal UI and all runtime logic                |
 | `packages/shared` | Shared types, Zod schemas, and model definitions |
