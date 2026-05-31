@@ -6,9 +6,11 @@ A terminal-based AI coding assistant. Chat with Claude, GPT, or local Ollama mod
 
 ## Installation
 
-> Coming soon — a one-line install script is in the works.
+```bash
+curl -fsSL https://raw.githubusercontent.com/sankeerthreddy1597/liteocode/main/install.sh | bash
+```
 
-In the meantime, see [Running from Source](#running-from-source) below.
+Installs the `liteocode` binary to `~/.local/bin`. Set `LITEOCODE_INSTALL_DIR` to override the install location.
 
 ## Features
 
