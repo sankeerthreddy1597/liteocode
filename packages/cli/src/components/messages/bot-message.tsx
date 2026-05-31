@@ -131,6 +131,7 @@ export function BotMessage({
                   width="100%"
                   paddingX={2}
                   flexDirection="row"
+                  gap={1}
                 >
                   <text
                     attributes={TextAttributes.DIM}
