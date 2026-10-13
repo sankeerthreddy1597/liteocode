@@ -29,6 +29,8 @@ Set `LITEOCODE_INSTALL_DIR` to install somewhere else.
 - **Extended thinking** — reasoning/thinking tokens surfaced for models that support it (Claude, Qwen3 via Ollama)
 - **Multi-step tool calling** — the assistant can call tools across multiple turns to complete complex tasks
 - **Persistent sessions** — resume any previous conversation from the session list
+- **Subagents** — for long research (repo overviews, tracing a bug across files), the assistant can launch up to 4 parallel read-only subagents. Each shows a single live status line, and only its final report enters the main conversation.
+- **Context compaction** — `/compact` summarizes older messages to free up context, and it runs automatically when a conversation reaches 75% of the model's context window. Full history stays in the session file.
 
 ## Supported Models
 
@@ -63,6 +65,7 @@ These are optional — if not set, defaults are used.
 | Variable          | Default                  | Description                       |
 | ----------------- | ------------------------ | --------------------------------- |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Base URL for your Ollama instance |
+| `OLLAMA_NUM_CTX`  | `32768`                  | Context window used for Ollama models |
 
 ## Local Data
 

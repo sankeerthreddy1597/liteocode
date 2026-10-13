@@ -4,13 +4,19 @@ import { z } from "zod";
 import { useKeyboard } from "@opentui/react";
 import { type ModeType, type AnyChatModelId } from "@litecode/shared";
 import { SessionShell } from "../components/session-shell";
-import { UserMessage, BotMessage, ErrorMessage } from "../components/messages";
+import {
+  UserMessage,
+  BotMessage,
+  ErrorMessage,
+  CompactionMessage,
+} from "../components/messages";
 import { useToast } from "../providers/toast";
 import { useChat } from "../hooks/use-chat";
 import { usePromptConfig } from "../providers/prompt-config";
-import type { Message } from "../hooks/use-chat";
+import type { Message, SessionEntry } from "../hooks/use-chat";
 import { loadSession, type Session } from "../lib/sessions";
 import { useKeyboardLayer } from "../providers/keyboard-layer";
+import { useChatSession } from "../providers/chat-session";
 
 const sessionLocationSchema = z.object({
   session: z.custom<Session>(
@@ -25,7 +31,13 @@ const sessionLocationSchema = z.object({
     .optional(),
 });
 
-function ChatMessage({ msg }: { msg: Message }) {
+function ChatMessage({
+  msg,
+  subagentActivity,
+}: {
+  msg: Message;
+  subagentActivity: Record<string, string>;
+}) {
   if (msg.role === "user") {
     const text = msg.parts
       .filter((p) => p.type === "text")
@@ -41,6 +53,7 @@ function ChatMessage({ msg }: { msg: Message }) {
       mode={msg.metadata?.mode ?? "BUILD"}
       durationMs={msg.metadata?.durationMs}
       streaming={false}
+      subagentActivity={subagentActivity}
     />
   );
 }
@@ -52,14 +65,30 @@ function SessionChat({
   session: Session;
   initialPrompt?: { message: string; mode: ModeType; model: AnyChatModelId };
 }) {
-  const [initialMessages] = useState(() => session.messages as Message[]);
+  const [initialEntries] = useState(() => session.messages as SessionEntry[]);
   const { mode, model } = usePromptConfig();
   const { isTopLayer } = useKeyboardLayer();
-  const { messages, status, submit, abort, interrupt, error } = useChat(
-    session.id,
-    initialMessages,
-  );
+  const { setSession: setChatSession } = useChatSession();
+  const {
+    activeWindow,
+    contextTokens,
+    subagentActivity,
+    status,
+    submit,
+    compact,
+    abort,
+    interrupt,
+    error,
+  } = useChat(session.id, initialEntries);
   const hasSubmittedInitialPromptRef = useRef(false);
+  const busy = status === "submitted" || status === "streaming" || status === "compacting";
+
+  // Expose /compact and context usage to the input bar and status bar
+  useEffect(() => {
+    setChatSession({ compact: () => compact(model), contextTokens });
+  }, [setChatSession, compact, model, contextTokens]);
+
+  useEffect(() => () => setChatSession(null), [setChatSession]);
 
   useEffect(() => {
     return () => {
@@ -68,7 +97,7 @@ function SessionChat({
   }, [abort]);
 
   useKeyboard((key) => {
-    if (key.name === "escape" && isTopLayer("base") && status === "streaming") {
+    if (key.name === "escape" && isTopLayer("base") && busy) {
       key.preventDefault();
       interrupt();
     }
@@ -87,11 +116,16 @@ function SessionChat({
   return (
     <SessionShell
       onSubmit={(text) => void submit({ userText: text, mode, model })}
-      loading={status === "submitted" || status === "streaming"}
-      interruptible={status === "submitted" || status === "streaming"}
+      loading={busy}
+      interruptible={busy}
+      loadingLabel={status === "compacting" ? "Compacting conversation…" : undefined}
+      inputDisabled={status === "compacting"}
     >
-      {messages.map((msg) => (
-        <ChatMessage key={msg.id} msg={msg} />
+      {activeWindow.compaction && (
+        <CompactionMessage entry={activeWindow.compaction} />
+      )}
+      {activeWindow.messages.map((msg) => (
+        <ChatMessage key={msg.id} msg={msg} subagentActivity={subagentActivity} />
       ))}
       {error && <ErrorMessage message={error.message} />}
     </SessionShell>

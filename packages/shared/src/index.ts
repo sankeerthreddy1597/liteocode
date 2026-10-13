@@ -16,6 +16,7 @@ export {
   modeSchema,
   toolInputSchemas,
   getToolContracts,
+  subagentToolContracts,
   type ToolContracts,
   type ModeType,
 } from "./schemas";

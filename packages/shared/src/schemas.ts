@@ -46,6 +46,16 @@ export const toolInputSchemas = {
       .describe("Short description of the command"),
     timeout: z.number().optional().describe("Timeout in milliseconds"),
   }),
+  task: z.object({
+    description: z
+      .string()
+      .describe("Short (3-6 word) label for the task, shown to the user"),
+    prompt: z
+      .string()
+      .describe(
+        "Complete, self-contained instructions for the subagent. It cannot see this conversation, so include all relevant context, file paths and what to report back.",
+      ),
+  }),
 } as const;
 
 export const readOnlyToolContracts = {
@@ -70,8 +80,23 @@ export const readOnlyToolContracts = {
   }),
 } as const;
 
+// Subagents get the read-only tools only, so they can't spawn further subagents
+export const subagentToolContracts = readOnlyToolContracts;
+
+const taskToolContract = tool({
+  description:
+    "Launch a read-only subagent for a long research task: exploring an unfamiliar area of the repo, tracing a bug across files, or building an overview. It works in its own context and returns only a final report, keeping your context small. Up to 4 can run in parallel when you call this tool several times in one step; call them one at a time when a task depends on another's result. Don't use it for simple lookups you can do with one or two tool calls.",
+  inputSchema: toolInputSchemas.task,
+});
+
+const planToolContracts = {
+  ...readOnlyToolContracts,
+  task: taskToolContract,
+} as const;
+
 export const buildToolContracts = {
   ...readOnlyToolContracts,
+  task: taskToolContract,
   writeFile: tool({
     description:
       "Create or overwrite a file under the current project directory.",
@@ -91,5 +116,5 @@ export const buildToolContracts = {
 export type ToolContracts = typeof buildToolContracts;
 
 export function getToolContracts(mode: ModeType) {
-  return mode === Mode.PLAN ? readOnlyToolContracts : buildToolContracts;
+  return mode === Mode.PLAN ? planToolContracts : buildToolContracts;
 }

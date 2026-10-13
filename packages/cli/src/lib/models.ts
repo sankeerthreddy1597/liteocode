@@ -39,12 +39,24 @@ const ollamaBaseURL = (process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").
 
 const ollamaProvider = createOllama({ baseURL: ollamaBaseURL });
 
+// Ollama silently truncates prompts longer than num_ctx, so set it explicitly
+// and treat it as the model's context window.
+const OLLAMA_CONTEXT_WINDOW = Number(process.env.OLLAMA_NUM_CTX) || 32_768;
+
+const FALLBACK_CONTEXT_WINDOW = 128_000;
+
+export function getContextWindow(modelId: string): number {
+  if (isOllamaModelId(modelId)) return OLLAMA_CONTEXT_WINDOW;
+  return findSupportedChatModel(modelId)?.contextWindow ?? FALLBACK_CONTEXT_WINDOW;
+}
+
 export function resolveChatModel(modelId: string): ResolvedModel {
   if (isOllamaModelId(modelId)) {
     return {
       model: ollamaProvider.chat(modelId.slice("ollama:".length), {
         think: true,
         reliableToolCalling: true,
+        options: { num_ctx: OLLAMA_CONTEXT_WINDOW },
       }) as unknown as LanguageModel,
     };
   }

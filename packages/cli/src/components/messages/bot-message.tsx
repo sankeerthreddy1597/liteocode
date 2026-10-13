@@ -5,6 +5,7 @@ import { useTheme } from "../../providers/theme";
 import type { Message } from "../../hooks/use-chat";
 import { Mode, type ModeType } from "@litecode/shared";
 import { TextAttributes } from "@opentui/core";
+import { formatToolInput, formatToolName } from "../../lib/format-tool";
 
 type ThinkingProps = {
   reasoning: string;
@@ -43,22 +44,26 @@ type Props = {
   mode: ModeType;
   durationMs?: number;
   streaming?: boolean;
+  // Live status of running subagents, keyed by task tool call id
+  subagentActivity?: Record<string, string>;
 };
-
-function formatToolName(name: string): string {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/^./, (c) => c.toUpperCase());
-}
 
 function isToolPart(part: ClientMessagePart): part is ToolPart {
   return part.type.startsWith("tool-");
 }
 
-function formatToolArgs(tc: ToolPart): string {
-  if (!("input" in tc) || tc.input == null) return "";
-  if (typeof tc.input !== "object") return String(tc.input);
-  return Object.values(tc.input).map(String).join(" ");
+function isPending(part: ToolPart) {
+  return part.state !== "output-available" && part.state !== "output-error";
+}
+
+// A subagent is always exactly one line: its label plus whatever it's doing now
+function subagentStatus(part: ToolPart, activity: string | undefined): string {
+  if (part.state === "output-error") return part.errorText;
+  if (part.state === "output-available") {
+    const toolCalls = (part.output as { toolCalls?: number } | null)?.toolCalls;
+    return toolCalls != null ? `Done (${toolCalls} tool calls)` : "Done";
+  }
+  return activity ?? "…";
 }
 
 type PartGroup = {
@@ -93,6 +98,7 @@ export function BotMessage({
   mode,
   durationMs,
   streaming = false,
+  subagentActivity,
 }: Props) {
   const { colors } = useTheme();
   return (
@@ -108,6 +114,47 @@ export function BotMessage({
                   reasoning={part.text}
                   active={reasoningActive}
                 />
+              );
+            }
+
+            if (isToolPart(part) && part.type === "tool-task") {
+              return (
+                <box
+                  key={part.toolCallId}
+                  border={["left"]}
+                  borderColor={colors.thinkingBorder}
+                  customBorderChars={{
+                    ...EmptyBorder,
+                    vertical: "│",
+                  }}
+                  width="100%"
+                  height={1}
+                  overflow="hidden"
+                  paddingX={2}
+                  flexDirection="row"
+                  gap={1}
+                >
+                  <text
+                    fg={
+                      part.state === "output-error"
+                        ? colors.error
+                        : isPending(part)
+                          ? colors.thinkingBorder
+                          : colors.success
+                    }
+                  >
+                    ◉
+                  </text>
+                  <text wrapMode="none" flexShrink={0}>
+                    Agent: {String(part.input.description ?? "")}
+                  </text>
+                  <text attributes={TextAttributes.DIM} fg={colors.dimSeparator} flexShrink={0}>
+                    ›
+                  </text>
+                  <text attributes={TextAttributes.DIM} wrapMode="none" flexShrink={1}>
+                    {subagentStatus(part, subagentActivity?.[part.toolCallId])}
+                  </text>
+                </box>
               );
             }
 
@@ -129,12 +176,7 @@ export function BotMessage({
                 >
                   <text
                     attributes={TextAttributes.DIM}
-                    fg={
-                      part.state !== "output-available" &&
-                      part.state !== "output-error"
-                        ? colors.thinkingBorder
-                        : colors.success
-                    }
+                    fg={isPending(part) ? colors.thinkingBorder : colors.success}
                   >
                     ◉
                   </text>
@@ -142,11 +184,8 @@ export function BotMessage({
                     <em attributes={TextAttributes.ITALIC}>
                       {formatToolName(toolName)}:
                     </em>{" "}
-                    {formatToolArgs(part)}
-                    {part.state !== "output-available" &&
-                    part.state !== "output-error"
-                      ? " …"
-                      : ""}
+                    {formatToolInput(part.input)}
+                    {isPending(part) ? " …" : ""}
                     {part.state === "output-error" ? ` ${part.errorText}` : ""}
                   </text>
                 </box>

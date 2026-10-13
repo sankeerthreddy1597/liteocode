@@ -1,6 +1,7 @@
 import type { DialogContextValue } from "../../providers/dialog";
 import type { ToastContextValue } from "../../providers/toast";
 import type { ModeType, AnyChatModelId } from "@litecode/shared";
+import type { CompactResult } from "../../hooks/use-chat";
 
 export type CommandContext = {
   exit: () => void;
@@ -11,6 +12,8 @@ export type CommandContext = {
   setMode: (mode: ModeType) => void;
   setModel: (model: AnyChatModelId) => void;
   availableModels: AnyChatModelId[];
+  // Only set while a session is open
+  compact?: () => Promise<CompactResult>;
 };
 
 export type Command = {

@@ -9,6 +9,7 @@ type Props = {
   inputDisabled?: boolean;
   loading?: boolean;
   interruptible?: boolean;
+  loadingLabel?: string;
 };
 
 export function SessionShell({
@@ -17,6 +18,7 @@ export function SessionShell({
   inputDisabled = false,
   loading = false,
   interruptible = false,
+  loadingLabel,
 }: Props) {
   const { mode } = usePromptConfig();
 
@@ -49,6 +51,7 @@ export function SessionShell({
           {loading ? (
             <>
               <Spinner mode={mode} />
+              {loadingLabel ? <text>{loadingLabel}</text> : null}
               {interruptible ? <text>esc to interrupt</text> : null}
             </>
           ) : null}

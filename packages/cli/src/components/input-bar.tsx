@@ -25,6 +25,7 @@ import { useKeyboardLayer } from "../providers/keyboard-layer";
 import { useDialog } from "../providers/dialog";
 import { useTheme } from "../providers/theme";
 import { usePromptConfig } from "../providers/prompt-config";
+import { useChatSession } from "../providers/chat-session";
 import { Mode } from "@litecode/shared";
 
 const MAX_VISIBLE_MENTIONS = 8;
@@ -312,6 +313,7 @@ export function InputBar({ onSubmit, disabled = false }: Props) {
   const dialog = useDialog();
   const { colors } = useTheme();
   const { isTopLayer, push, pop, setResponder } = useKeyboardLayer();
+  const { session: chatSession } = useChatSession();
 
   const [activeMention, setActiveMention] = useState<MentionMatch | null>(null);
   const [mentionCandidates, setMentionCandidates] = useState<
@@ -436,12 +438,13 @@ export function InputBar({ onSubmit, disabled = false }: Props) {
           setMode,
           setModel,
           availableModels,
+          compact: chatSession?.compact,
         });
       } else {
         textarea.insertText(command.value + " ");
       }
     },
-    [renderer, toast, dialog, navigate, mode, setMode, setModel],
+    [renderer, toast, dialog, navigate, mode, setMode, setModel, availableModels, chatSession],
   );
 
   const handleCommandExecute = useCallback(

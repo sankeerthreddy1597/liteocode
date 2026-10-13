@@ -16,6 +16,25 @@ export const COMMANDS: Command[] = [
     },
   },
   {
+    name: "compact",
+    description: "Summarize the conversation to free up context",
+    value: "/compact",
+    action: async (ctx) => {
+      if (!ctx.compact) {
+        ctx.toast.show({ message: "No active session to compact" });
+        return;
+      }
+      const result = await ctx.compact();
+      if (result === "compacted") {
+        ctx.toast.show({ variant: "success", message: "Conversation compacted" });
+      } else if (result === "empty") {
+        ctx.toast.show({ message: "Nothing to compact yet" });
+      } else if (result === "busy") {
+        ctx.toast.show({ message: "Wait for the current response to finish" });
+      }
+    },
+  },
+  {
     name: "agents",
     description: "Switch agents",
     value: "/agents",

@@ -9,11 +9,14 @@ type SupportedChatModelDefinition = {
   id: string;
   provider: SupportedProvider;
   pricing: ModelPricing;
+  /** Max input tokens; drives auto-compaction. */
+  contextWindow: number;
 };
 
 export const SUPPORTED_CHAT_MODELS = [
   {
     id: "claude-sonnet-4-6",
+    contextWindow: 1_000_000,
     provider: "anthropic",
     pricing: {
       inputUsdPerMillionTokens: 3,
@@ -22,6 +25,7 @@ export const SUPPORTED_CHAT_MODELS = [
   },
   {
     id: "claude-haiku-4-5",
+    contextWindow: 200_000,
     provider: "anthropic",
     pricing: {
       inputUsdPerMillionTokens: 1,
@@ -30,6 +34,7 @@ export const SUPPORTED_CHAT_MODELS = [
   },
   {
     id: "claude-opus-4-6",
+    contextWindow: 1_000_000,
     provider: "anthropic",
     pricing: {
       inputUsdPerMillionTokens: 5,
@@ -38,6 +43,7 @@ export const SUPPORTED_CHAT_MODELS = [
   },
   {
     id: "gpt-5.4",
+    contextWindow: 400_000,
     provider: "openai",
     pricing: {
       inputUsdPerMillionTokens: 2.5,
@@ -46,6 +52,7 @@ export const SUPPORTED_CHAT_MODELS = [
   },
   {
     id: "gpt-5.4-mini",
+    contextWindow: 400_000,
     provider: "openai",
     pricing: {
       inputUsdPerMillionTokens: 0.75,
@@ -54,6 +61,7 @@ export const SUPPORTED_CHAT_MODELS = [
   },
   {
     id: "gpt-5.4-nano",
+    contextWindow: 400_000,
     provider: "openai",
     pricing: {
       inputUsdPerMillionTokens: 0.2,

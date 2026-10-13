@@ -1,7 +1,7 @@
 import { join } from "path";
 import { homedir } from "os";
 import { readFile, writeFile, mkdir, readdir } from "fs/promises";
-import type { Message } from "../hooks/use-chat";
+import type { SessionEntry } from "../hooks/use-chat";
 
 const SESSIONS_DIR = join(homedir(), ".litecode", "sessions");
 
@@ -10,7 +10,8 @@ export type Session = {
   title: string;
   createdAt: string;
   updatedAt: string;
-  messages: Message[];
+  // Append-only: chat messages and compaction entries, in order
+  messages: SessionEntry[];
 };
 
 export type SessionSummary = Omit<Session, "messages">;
@@ -45,7 +46,7 @@ export async function loadSession(id: string): Promise<Session | null> {
   }
 }
 
-export async function saveSessionMessages(id: string, messages: Message[]): Promise<void> {
+export async function saveSessionMessages(id: string, messages: SessionEntry[]): Promise<void> {
   try {
     const session = await loadSession(id);
     if (!session) return;
